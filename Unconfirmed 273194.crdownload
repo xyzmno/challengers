@@ -1,0 +1,455 @@
+
+import sys # to get input from node app.js file
+
+# Commented out IPython magic to ensure Python compatibility.
+import pandas as pd
+import numpy as np
+import matplotlib as mpl
+from matplotlib import pyplot as plt
+import seaborn as sns
+from datetime import date
+from scipy import stats
+from scipy.stats import norm, skew 
+
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.figure_factory as ff
+from plotly.colors import n_colors
+from plotly.subplots import make_subplots
+
+import warnings
+warnings.filterwarnings("ignore")
+# %matplotlib inline
+pd.set_option("display.max_columns",None)
+pd.set_option("display.max_rows",None)
+plt.style.use('seaborn')
+
+# from google.colab import drive
+# drive.mount('/content/drive')
+
+df = pd.read_csv('D:\dp\startup-prediction\python\startupdata.csv')
+
+df.head(5)
+
+df.tail(5)
+
+df.info()
+
+df.columns
+
+numeric=['int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+df_num=df.select_dtypes(include=numeric)
+df_num.head(5)
+
+df_cat=df.select_dtypes(include='object')
+df_cat.head(3)
+
+df['status'] = df.status.map({'acquired':1, 'closed':0})
+df.head()
+
+df['status'].astype(int)
+
+for index, row in df.iterrows():
+    if row['labels']!=row['status']:
+        # print(index, row['labels'], row['status'])
+        pass
+
+describeNum = df.describe(include =['float64', 'int64', 'float', 'int'])
+describeNum.T.style.background_gradient(low=0.2,high=0.1)
+
+describeNumCat = df.describe(include=["O"])
+describeNumCat.T.style.background_gradient(low=0.2,high=0.1)
+
+cats = ['state_code','zip_code','id','city','Unnamed: 6','name','founded_at','closed_at','first_funding_at','last_funding_at','state_code.1','category_code','object_id','status'] 
+for col in cats:
+    # print(f'''Value count {col}:''')
+    # print(df[col].value_counts())
+    # print()
+    pass
+
+null=pd.DataFrame(df.isnull().sum(),columns=["Null Values"])
+null["% Missing Values"]=(df.isna().sum()/len(df)*100)
+null = null[null["% Missing Values"] > 0]
+null.style.background_gradient(low =0.2,high=0.1)
+
+df[["Unnamed: 6", "closed_at", "age_first_milestone_year", "age_last_milestone_year", "state_code.1", "status"]].head(4)
+
+df['Unnamed: 6'] = df.apply(lambda row: (row.city) + " " + (row.state_code) + " " +(row.zip_code)  , axis = 1)
+df.head(5)
+
+totalNull = df['Unnamed: 6'].isnull().sum()
+
+# print('Total Missing Values "Unnamed: 6": ', totalNull)
+
+df['closed_at'] = df['closed_at'].fillna(value="21/02/2022")
+
+totalNull = df['closed_at'].isnull().sum()
+
+# print('Total Missing Values "closed_at": ', totalNull)
+
+df[['age_first_milestone_year','age_last_milestone_year','milestones']].head()
+
+df['age_first_milestone_year'] = df['age_first_milestone_year'].fillna(value="0")
+df['age_last_milestone_year'] = df['age_last_milestone_year'].fillna(value="0")
+
+for index, row in df.iterrows():
+    if row['state_code']!=row['state_code.1']:
+        # print(index, row['state_code'], row['state_code.1'])
+        pass
+
+df.drop(["state_code.1"], axis=1, inplace=True)
+
+null=pd.DataFrame(df.isnull().sum(),columns=["Null Values"])
+null["% Missing Values"]=(df.isna().sum()/len(df)*100)
+null = null[null["% Missing Values"] > 0]
+null.style.background_gradient(cmap='viridis',low =0.2,high=0.1)
+
+df.corr()
+
+df['age_first_milestone_year'] = df.age_first_milestone_year.astype(float)
+df['age_last_milestone_year'] = df.age_last_milestone_year.astype(float)
+
+features = ['age_first_funding_year','age_last_funding_year','age_first_milestone_year','age_last_milestone_year','relationships','funding_rounds','funding_total_usd','milestones','is_CA','is_NY','is_MA','is_TX','is_otherstate','is_software','is_web','is_mobile','is_enterprise','is_advertising','is_gamesvideo','is_ecommerce','is_biotech','is_consulting','is_othercategory','has_VC','has_angel','has_roundA','has_roundB','has_roundC','has_roundD','avg_participants','is_top500','status']
+
+plt.figure(figsize=(30,20))
+ax = sns.heatmap(data = df[features].corr(),annot=True)
+
+bottom, top = ax.get_ylim()
+ax.set_ylim(bottom + 0.5,top - 0.5)
+
+cols = df[features].corr().nlargest(10,'status')['status'].index
+cm = np.corrcoef(df[cols].values.T) 
+sns.set(font_scale=1.25)
+hm = sns.heatmap(cm, cbar=True, annot=True, square=True, fmt='.2f', annot_kws={'size': 10}, yticklabels=cols.values, xticklabels=cols.values)
+# plt.show()
+
+fig, ax = plt.subplots()
+_ = plt.scatter(x=df['age_first_funding_year'], y=df['age_last_funding_year'], edgecolors="#000000", linewidths=0.5)
+_ = ax.set(xlabel="age_first_funding_year", ylabel="age_last_funding_year")
+
+
+
+cdf = df["founded_at"].apply(lambda x: '' + x[:2]).value_counts() \
+            .to_frame().reset_index() \
+            .rename(columns={"index": "year", "founded_at": "No_of_startup"})
+
+fig, ax = plt.subplots()
+_ = sns.barplot(x="year", y="No_of_startup", data=cdf, 
+                palette=sns.color_palette(['#003f5c', '#ffa600'], n_colors=7), ax=ax)
+_ = ax.set(xlabel="Year", ylabel="No. of startup")
+
+df["founded_at"].apply(lambda x: '20:' + x[:2]).value_counts(normalize=False)
+
+df["founded_at"].apply(lambda x: '20:' + x[:2]).value_counts(normalize=True)
+
+df["closed_at"].apply(lambda x: '20:' + x[:2]).value_counts(normalize=True)
+
+df_acquired = df[(df["status"] == True)]
+df_acquired.shape
+
+df_closed = df[(df["status"] == False)]
+df_closed.shape
+
+value_counts = df["status"].value_counts().to_dict()
+fig, ax = plt.subplots()
+_ = ax.pie(x=[value_counts[False], value_counts[True]], labels=['No', 'Yes'], 
+           colors=['#003f5c', '#ffa600'], textprops={'color': '#040204'})
+_ = ax.axis('equal')
+_ = ax.set_title('Startup Acquired')
+
+coba = df[(df["status"] == 1)]
+
+features = coba[["has_VC","has_angel","has_roundA","has_roundB","has_roundC","has_roundD"]]
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+fig, ax = plt.subplots(figsize=(12,8))
+
+a= np.random.choice(["{}".format(i) for i in [1,2,3,4,5,6]], size=(12,8))
+coba = pd.DataFrame(a, columns=["has_{}".format(i) for i in list("features")])
+
+sns.countplot(x="variable", hue="value",palette="nipy_spectral", data=pd.melt(features))
+
+# plt.show()
+
+fig, ax = plt.subplots(figsize=(12,8))
+
+_ = sns.countplot(x="category_code", hue="status", data=df, palette="nipy_spectral",
+              order=df.category_code.value_counts().index)
+
+_ = ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+_ = ax.set(xlabel="Category", ylabel="No. of startup")
+plt.legend(bbox_to_anchor=(0.945, 0.90))
+
+fig, ax = plt.subplots(figsize=(12,8))
+
+_ = sns.countplot(x="state_code", hue="status", data=df, palette="nipy_spectral",
+              order=df.state_code.value_counts().index)
+
+_ = ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+_ = ax.set(xlabel="state_code", ylabel="No. of startup")
+plt.legend(bbox_to_anchor=(0.945, 0.90))
+
+trending_statea = df.groupby(['state_code']).size().rename('num_startup').reset_index()
+
+most_trending_statea = trending_statea[trending_statea.groupby('state_code')['num_startup'].transform(max) == trending_statea['num_startup']]
+most_trending_statea = most_trending_statea.sort_values('num_startup', ascending=False)
+most_trending_statea
+
+trending_statea = df_acquired.groupby(['state_code','category_code']).size().rename('num_startup').reset_index()
+
+most_trending_statea = trending_statea[trending_statea.groupby('state_code')['num_startup'].transform(max) == trending_statea['num_startup']]
+most_trending_statea = most_trending_statea.sort_values('num_startup', ascending=False)
+most_trending_statea.head(10)
+
+trending_statec = df_closed.groupby(['state_code','category_code']).size().rename('num_startup').reset_index()
+
+most_trending_statec = trending_statec[trending_statec.groupby('state_code')['num_startup'].transform(max) == trending_statec['num_startup']]
+most_trending_statec = most_trending_statec.sort_values('num_startup', ascending=False)
+most_trending_statec
+
+trending_categorya = df_acquired.groupby(['city','category_code']).size().rename('num_startup').reset_index()
+
+most_trending_categorya = trending_categorya[trending_categorya.groupby('city')['num_startup'].transform(max) == trending_categorya['num_startup']]
+most_trending_categorya = most_trending_categorya.sort_values('num_startup', ascending=False)
+most_trending_categorya
+
+trending_categoryc = df_closed.groupby(['city','category_code']).size().rename('num_startup').reset_index()
+
+most_trending_categoryc = trending_categoryc[trending_categoryc.groupby('city')['num_startup'].transform(max) == trending_categoryc['num_startup']].reset_index()
+most_trending_categoryc = most_trending_categoryc.sort_values('num_startup', ascending=False)
+most_trending_categoryc
+
+funding_sorted_category = pd.pivot_table(df,
+              index=['category_code'],
+              values=['funding_total_usd'],
+              aggfunc=['sum']
+              ).reset_index()
+funding_sorted_category.columns = ['category_code', 'funding_total_usd']
+funding_sorted_category = funding_sorted_category.sort_values(['funding_total_usd'], ascending = False)
+funding_sorted_category.head(10)
+
+fig, ax = plt.subplots(figsize=(15,7))
+_ = sns.barplot(x="category_code", y="funding_total_usd", data=funding_sorted_category,
+                palette="nipy_spectral", ax=ax)
+_ = ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+_ = ax.set(xlabel="Category", ylabel="Total Funding USD")
+
+funding_sorted_city = pd.pivot_table(df,
+              index=['city'],
+              values=['funding_total_usd'],
+              aggfunc=['sum']
+              ).reset_index()
+funding_sorted_city.columns = ['city', 'funding_total_usd']
+funding_sorted_city = funding_sorted_city.sort_values(['funding_total_usd'], ascending = False)
+funding_sorted_city = funding_sorted_city.head(10)
+funding_sorted_city
+
+fig, ax = plt.subplots(figsize=(10,7))
+_ = sns.barplot(x="city", y="funding_total_usd", data=funding_sorted_city,
+                palette="nipy_spectral", ax=ax)
+_ = ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+_ = ax.set(xlabel="No of State", ylabel="Number of Start Up")
+
+df_what_in_kirkland = df[(df["city"] == 'Kirkland')]
+df_what_in_kirkland.shape
+
+df_what_in_kirkland.head()
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+_ = sns.countplot(x="has_VC", hue="status", data=df, palette="nipy_spectral",
+              order=df.has_VC.value_counts().index)
+
+_ = ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+_ = ax.set(xlabel="Has_VC", ylabel="No. of startup")
+plt.legend(bbox_to_anchor=(0.945, 0.90))
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+_ = sns.countplot(x="is_top500", hue="status", data=df, palette="nipy_spectral",
+              order=df.is_top500.value_counts().index)
+
+_ = ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+_ = ax.set(xlabel="is_top500", ylabel="No. of startup")
+plt.legend(bbox_to_anchor=(0.945, 0.90))
+
+len(df[(df["status"] == True) & (df["is_top500"] == True)].index)
+
+len(df[(df["status"] == False) & (df["is_top500"] == False)].index)
+
+df_acquired["is_top500"].value_counts(normalize=True)
+
+
+
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df['has_RoundABCD'] = np.where((df['has_roundA'] == 1) | (df['has_roundB'] == 1) | (df['has_roundC'] == 1) | (df['has_roundD'] == 1), 1, 0)
+df.head()
+
+df['has_Investor'] = np.where((df['has_VC'] == 1) | (df['has_angel'] == 1), 1, 0)
+df.head()
+
+len(df[(df["has_RoundABCD"] == 1)].index)
+
+len(df[ (df['has_RoundABCD']  == 1) & (df['status']  == 1) ].index)
+
+len(df)
+
+df['has_Seed'] = np.where((df['has_RoundABCD'] == 0) & (df['has_Investor'] == 1), 1, 0)
+df.head()
+
+df['has_Seed'] == 1
+
+len(df[(df["has_Seed"] == 1)].index)
+
+df['invalid_startup'] = np.where((df['has_RoundABCD'] == 0) & (df['has_VC'] == 0) & (df['has_angel'] == 0), 1, 0)
+df.head()
+
+len(df[(df["invalid_startup"] == 1)].index)
+
+df.founded_at=pd.to_datetime(df.founded_at)
+df.closed_at=pd.to_datetime(df.closed_at)
+
+df['age_closed_startup'] = df.apply(lambda row: (row.closed_at - row.founded_at) , axis=1)
+
+df['age_closed_startup'].head()
+
+df['startUp_age_year'] = df['age_closed_startup'].dt.days /365
+
+df.head()
+
+cat_feature = df.select_dtypes(include='object')
+cat_feature.head()
+
+df = df.drop(['state_code','id','Unnamed: 6','category_code','object_id'],axis=1)
+df = df.drop(['zip_code','founded_at','closed_at','first_funding_at','last_funding_at','city','name'],axis=1)
+df = df.drop(['Unnamed: 0'],axis=1)
+df = df.drop(['latitude','longitude'],axis=1)
+
+df = df.drop(['age_closed_startup'],axis=1)
+
+df.head(5)
+
+from sklearn.model_selection import train_test_split
+
+X = df.drop('status', axis = 1)
+y = df['status']
+
+df.tail(5)
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 42)
+
+from sklearn.metrics import confusion_matrix, classification_report,accuracy_score
+import warnings
+warnings.filterwarnings('ignore')
+
+# print("Shape of the X Train :", X_train.shape)
+# print("Shape of the y Train :", y_train.shape)
+# print("Shape of the X test :", X_test.shape)
+# print("Shape of the y test :", y_test.shape)
+
+from sklearn.metrics import confusion_matrix, classification_report,accuracy_score,roc_curve, auc, precision_recall_curve, f1_score
+import warnings
+warnings.filterwarnings('ignore')
+
+
+
+from sklearn.svm import SVC
+sv = SVC()
+
+sv.fit(X_train,y_train)
+
+
+y_pred_sv = sv.predict(X_test)
+
+# print("Training Accuracy :", sv.score(X_train, y_train))
+# print("Testing Accuracy :", sv.score(X_test, y_test))
+
+cm = confusion_matrix(y_test, y_pred_sv)
+plt.rcParams['figure.figsize'] = (3, 3)
+sns.heatmap(cm, annot = True, fmt = '.8g')
+# plt.show()
+
+cr = classification_report(y_test, y_pred_sv)
+# print(cr)
+
+
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_pred_sv)
+f1 = f1_score(y_test, y_pred_sv)
+Precision_Recall_svc = auc(recall, precision)
+# print("Precision-Recall Curves =",Precision_Recall_svc)
+
+from sklearn.ensemble import RandomForestClassifier
+rf = RandomForestClassifier(bootstrap=False, max_depth=12, min_samples_leaf=100, min_samples_split=20,
+                       n_estimators=100,criterion='entropy',n_jobs=1000,max_leaf_nodes=100,max_features='auto'
+                           )
+
+    
+rf.fit(X,y)
+
+
+y_pred_rf = rf.predict(X_test)
+
+# print("Training Accuracy :", rf.score(X_train, y_train))
+# print("Testing Accuracy :", rf.score(X_test, y_test))
+
+cm = confusion_matrix(y_test, y_pred_rf)
+plt.rcParams['figure.figsize'] = (3, 3)
+sns.heatmap(cm, annot = True, cmap = 'Wistia', fmt = '.8g')
+# plt.show()
+
+cr = classification_report(y_test, y_pred_rf)
+# print(cr)
+
+false_positive_rate, true_positive_rate, thresholds = roc_curve(y_test,y_pred_rf)
+roc_auc = auc(false_positive_rate, true_positive_rate)
+# print("roc_auc",roc_auc)
+
+from lightgbm import LGBMClassifier
+clf = LGBMClassifier(learning_rate=0.02,
+                    boosting_type='gbdt', max_depth=4,  objective='binary', 
+                    random_state=100,  
+                  n_estimators=1000 ,reg_alpha=0, reg_lambda=1, n_jobs=-1)
+
+
+
+clf.fit(X,y)
+
+y_pred_lgb = clf.predict(X_test)
+
+
+# print("Training Accuracy :", clf.score(X_train, y_train))
+# print("Testing Accuracy :", clf.score(X_test, y_test))
+
+cm = confusion_matrix(y_test, y_pred_lgb)
+plt.rcParams['figure.figsize'] = (3, 3)
+sns.heatmap(cm, annot = True, cmap = 'Wistia', fmt = '.8g')
+# plt.show()
+
+cr = classification_report(y_test, y_pred_lgb)
+# print(cr)
+
+false_positive_rate, true_positive_rate, thresholds = roc_curve(y_test,y_pred_lgb)
+roc_auc = auc(false_positive_rate, true_positive_rate)
+# print("roc_auc",roc_auc)
+
+z=np.array(X_test)
+y_prediction=clf.predict(z[5].reshape(1,-1))
+# print(y_prediction)
+
+test_input = sys.argv[1]
+test_input = int(test_input)
+if y_prediction[0]==np.array(y_test)[test_input]:
+  print("You can invest in this startup company")
+else:
+  print("Recommed not to invest in this startup company")
+
